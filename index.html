@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Marketplace</title>
+	<style type = "text/css">
+		:root{
+			--bgcolor: #F0F0A0;
+			--titlecolor: #000090;
+			--textcolor: #000030;
+			--boxcolor: #A0A0FF;
+		}
+		
+		html, body{
+			height: 100%;
+			width: 100%;
+			background-color: var(--bgcolor);
+			color: var(--textcolor);
+			text-align: center;
+		}
+		
+		h1{
+			font-size: 2em;
+			font-weight: bold;
+			color: var(--titlecolor);
+		}
+		
+		h3{
+			font-size: 1em;
+			font-weight: bold;
+			color: var(--titlecolor);
+		}
+		
+		.container{
+			width: 100%;
+			text-align: center;
+		}
+		
+		.nftbox{
+			display: inline-block;
+			background-color: var(--boxcolor);
+			width: 300px;
+			border-width: 2px;
+			border-color: var(--titlecolor);
+			border-radius: 10px;
+			margin: 10px;
+		}
+		
+		.nftimg{
+			border-radius: 5px;
+			width: 200px;
+			height: 200px;
+		}
+
+	
+	</style>
+</head>
+<body>
+
+<div class="header">
+	<h1>MARKETPLACE</h1>
+</div>
+
+<div class="header">
+	<button onclick="connect();" id="walletbtn">CONNECT WALLET</button>
+</div>
+
+<br>
+
+<div class="header">
+	<h1>YOUR NFTS</h1>
+	<br>
+	<div id="inventory"></div>
+</div>
+
+<br>
+
+<div class="header">
+	<h1>NFTS FOR SALE</h1>
+	<br>
+	<div id="sales"></div>
+</div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.5.2/web3.min.js" integrity="sha512-mYc+D+NmmyR0Gcrzyae7q5HguBCS4cBHAsIk7gGhu0/ZyGg4z2YZDjyR2YQA/IMCMTNs4mnlw3vVdERzewpekQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<script src="./abi.js"></script>
+
+<script language="JavaScript" type="text/javascript">
+
+		const CONTRACT = '0xC0933E182eEFB845F921E9C5C10fDaD06BAE2F17';
+		const ABI = top.CLASS_ABI;
+		const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+		var wallet = null;
+		var web3 = null;
+		var inventory = [];
+		var sales = [];
+		
+		async function connect(){
+			try{
+				if (window.ethereum) {
+					await window.ethereum.enable();
+					web3 = new Web3(window.ethereum);
+					let walletget = await web3.eth.getAccounts();
+					
+					wallet = walletget[0];
+					
+					refresh();
+				}
+			} catch(err) {
+				alert("Something went Wrong, Connection not Established");
+			}		
+		}
+		
+		async function refresh(){
+			let txn = new web3.eth.Contract(ABI, CONTRACT);
+			
+			try{
+				inventory = await txn.methods.viewHolderItems( wallet ).call();
+			} catch(err) {}
+			try{
+				sales = await txn.methods.getAllListings().call();
+			} catch(err) {}
+			
+			console.log(inventory);
+			console.log(sales);
+			
+			document.getElementById("inventory").innerHTML = "";
+			for (i=0; i<inventory.length; i++){
+				let tokenid = inventory[i];
+				document.getElementById("inventory").innerHTML += `
+				<div class="nftbox">
+					<h3>`+tokenid+`</h3>
+					<img class="nftimg" src="`+tokenid+`.png">
+					<br>
+					<input type="numeric" id="inv` + tokenid + `" width="100%"></input>
+					<br>
+					<button onclick="list(`+ tokenid +`);">LIST</button>
+				</div>
+				`
+			}
+			
+			document.getElementById("sales").innerHTML = "";
+			for (i=0; i<sales.length; i++){
+				let tokenid = sales[i][0];
+				let pricestr = sales[i][1];
+				let price = Number(pricestr.substring(0, (pricestr.length - 12))) / 1000000;
+				document.getElementById("sales").innerHTML += `
+				<div class="nftbox">
+					<h3>`+tokenid+`</h3>
+					<img class="nftimg" src="`+tokenid+`.png">
+					<br>
+					<div id="purchasePrice`+tokenid+`">` + price + `</div> Eth <br>
+					<button onclick="buy(`+tokenid+`);">BUY NOW</button>					
+				</div>
+				`
+			}
+		}
+		
+		async function buy( tokenid ){
+			priceNumeric = Number(document.getElementById('purchasePrice' + tokenid).innerHTML);
+			price = (priceNumeric * 1000000) + "000000000000"
+			
+			//try{
+				let txn = new web3.eth.Contract(ABI, CONTRACT);
+				await txn.methods.buyItem(tokenid).send({from: wallet, value: price});
+			//}
+		}
+		
+		async function list( tokenid ){
+			let priceNumeric = document.getElementById('inv' + tokenid).value;
+			let price = (priceNumeric * 1000000) + "000000000000";
+			
+			//try{
+				let txn = new web3.eth.Contract(ABI, CONTRACT);
+				await txn.methods.listItem(tokenid, price, ZERO_ADDRESS).send({from: wallet, value: 0});
+			//}
+		}
+		
+		window.addEventListener('DOMContentLoaded', (event) => {
+		    console.log('DOM fully loaded and parsed');
+		    // with heavy page loading the mint button can be nerfed
+		    // and then updated here.
+		});
+</script>
+</body>
