@@ -915,11 +915,11 @@ interface IMarketPlace {
 abstract contract MarketApproval is Ownable, ERC721 {
     mapping(address => bool) private _isMarketplaceApproved;
 
-    function allowMarketplace(address marketSmartContract) external onlyOwner {
+    function allowMarketplace(address marketSmartContract) public onlyOwner {
         _isMarketplaceApproved[marketSmartContract] = true;
     }
 
-    function denyMarketplace(address marketSmartContract) external onlyOwner {
+    function denyMarketplace(address marketSmartContract) public onlyOwner {
         _isMarketplaceApproved[marketSmartContract] = false;
     }
 
