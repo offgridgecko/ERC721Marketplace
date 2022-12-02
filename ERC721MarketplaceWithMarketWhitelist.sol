@@ -1139,6 +1139,11 @@ contract project is MarketPlace {
         //renamed internal in ERC721 to avoid funny business
         _name = "name";
         _symbol = "symbol";
+        
+        //allowMarketplace(0x00000000006c3852cbEf3e08E8dF289169EdE581); //OpenSea Seaport 1.1
+        //allowMarketplace(0xf42aa99F011A1fA7CDA90E5E98b277E306BcA83e); //looksRare ERC721
+        allowMarketplace(0xF849de01B080aDC3A814FaBE1E2087475cF2E354); //X2Y2 ERC721Delegate
+        //allowMarketplace(0x00000000000111AbE46ff893f3B2fdF1F759a8A8); //Blur io Execution Delegate
     }
 
     function airdrop(address recipient, uint256 qty) public onlyOwner {
