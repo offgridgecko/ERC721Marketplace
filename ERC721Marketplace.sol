@@ -907,7 +907,7 @@ interface IMarketPlace {
     
     function listItem( uint256 tokenId, uint256 price, address recipient ) external;
     function delistItem(uint256 tokenId) external;
-    function buyItem(uint256 tokenId) external;
+    function buyItem(uint256 tokenId) external payable;
     function getAllListings() external view returns (Listing[] memory);
     function getListing(uint256 tokenId) external view returns (Listing memory);
 }
@@ -1080,15 +1080,35 @@ abstract contract ApprovalWhitelist is Ownable {
 
 contract project is MarketPlace, ApprovalBlacklist {
 
+    uint256 maxSupply = 1000;
+    uint256 totalSupply = 0;
+
     constructor() {
         //renamed internal in ERC721 to avoid funny business
         _name = "name";
         _symbol = "symbol";
+    }
 
-        for (uint256 i; i < 10; i++){
-            _mint(owner(), i);
+    function airdrop(address recipient, uint256 qty) public onlyOwner {
+        require((totalSupply + qty) < maxSupply, "Supply Limit Reached");
+        for (uint256 i = 0; i < qty; i++){
+            _mint( recipient, totalSupply );
+            totalSupply++;
         }
     }
 
+    function viewHolderItems( address holder ) public view returns(uint256[] memory) {
+        uint256 holderBalance = balanceOf( holder );
+        uint256 counter = 0;
+        uint256[] memory heldTokens = new uint256[]( holderBalance );
 
+        for (uint256 tokenId = 0; tokenId < totalSupply; tokenId++){
+            if ( ownerOf(tokenId) == holder ){
+                heldTokens[counter] = tokenId;
+                counter++;
+                if ( counter == holderBalance) { break; }
+            }
+        }
+        return heldTokens;
+    }
 }
