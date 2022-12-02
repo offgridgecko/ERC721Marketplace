@@ -1,4 +1,5 @@
 <!doctype html>
+<!--                       Dev Notes in Javascript at the bottom    -->
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
@@ -89,7 +90,14 @@
 
 <script language="JavaScript" type="text/javascript">
 
-		const CONTRACT = '0xC0933E182eEFB845F921E9C5C10fDaD06BAE2F17';
+		// Dev Notes:
+		// Change contract to actual deployed contract address.
+		// Consider adding checks to ensure that the correct blockchain is selected
+		//  in the wallet.
+		// At the end of connect() function, it would be prudent to do something with
+		//  the "CONNECT" button in the page code, add address as txt, etc.
+		
+		const CONTRACT = '0xb336ED960D66C738e04b2924DBA410cB5BB7475C';
 		const ABI = top.CLASS_ABI;
 		const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 		var wallet = null;
@@ -126,9 +134,43 @@
 			console.log(inventory);
 			console.log(sales);
 			
+			// pass specific things to track
+			let userItemsListed = [];
+			
+			document.getElementById("sales").innerHTML = "";
+			for (i=0; i<sales.length; i++){
+				let tokenid = sales[i][0];
+				let pricestr = sales[i][1];
+				let price = Number(pricestr.substring(0, (pricestr.length - 12))) / 1000000;
+				
+				if ( (sales[i][2] == ZERO_ADDRESS) || (sales[i][2].toLowerCase() == wallet.toLowerCase()) ){
+					document.getElementById("sales").innerHTML += `
+					<div class="nftbox">
+						<h3>`+tokenid+`</h3>
+						<img class="nftimg" src="`+tokenid+`.png">
+						<br>
+						<div id="purchasePrice`+tokenid+`">` + price + `</div> Eth <br>
+						<button onclick="buy(`+tokenid+`);">BUY NOW</button>					
+					</div>
+					`
+				}
+				
+				// added provision for the next step
+				if (inventory.includes(tokenid)){
+					userItemsListed.push(tokenid);
+				}
+			}
+			
+			
 			document.getElementById("inventory").innerHTML = "";
 			for (i=0; i<inventory.length; i++){
 				let tokenid = inventory[i];
+				var listButton = '<button onclick="list(' + tokenid + ');">LIST</button>';
+				
+				if ( userItemsListed.includes(tokenid) ){
+					listButton += '<button onclick="delist(' + tokenid + ');">DELIST</button>';
+				}
+				
 				document.getElementById("inventory").innerHTML += `
 				<div class="nftbox">
 					<h3>`+tokenid+`</h3>
@@ -136,26 +178,11 @@
 					<br>
 					<input type="numeric" id="inv` + tokenid + `" width="100%"></input>
 					<br>
-					<button onclick="list(`+ tokenid +`);">LIST</button>
+					` + listButton + `
 				</div>
 				`
 			}
 			
-			document.getElementById("sales").innerHTML = "";
-			for (i=0; i<sales.length; i++){
-				let tokenid = sales[i][0];
-				let pricestr = sales[i][1];
-				let price = Number(pricestr.substring(0, (pricestr.length - 12))) / 1000000;
-				document.getElementById("sales").innerHTML += `
-				<div class="nftbox">
-					<h3>`+tokenid+`</h3>
-					<img class="nftimg" src="`+tokenid+`.png">
-					<br>
-					<div id="purchasePrice`+tokenid+`">` + price + `</div> Eth <br>
-					<button onclick="buy(`+tokenid+`);">BUY NOW</button>					
-				</div>
-				`
-			}
 		}
 		
 		async function buy( tokenid ){
@@ -164,7 +191,9 @@
 			
 			//try{
 				let txn = new web3.eth.Contract(ABI, CONTRACT);
-				await txn.methods.buyItem(tokenid).send({from: wallet, value: price});
+				txn.methods.buyItem(tokenid).send({from: wallet, value: price}).then( onResolved => {
+					refresh(); 
+					});
 			//}
 		}
 		
@@ -174,7 +203,20 @@
 			
 			//try{
 				let txn = new web3.eth.Contract(ABI, CONTRACT);
-				await txn.methods.listItem(tokenid, price, ZERO_ADDRESS).send({from: wallet, value: 0});
+				txn.methods.listItem(tokenid, price, ZERO_ADDRESS).send({from: wallet, value: 0}).then( onResolved => {
+					refresh(); 
+					});
+			//}
+		}
+		
+		async function delist( tokenid ){
+			let priceNumeric = document.getElementById('inv' + tokenid).value;
+			
+			//try{
+				let txn = new web3.eth.Contract(ABI, CONTRACT);
+				txn.methods.delistItem(tokenid).send({from: wallet, value: 0}).then( onResolved => {
+					refresh(); 
+					});
 			//}
 		}
 		
