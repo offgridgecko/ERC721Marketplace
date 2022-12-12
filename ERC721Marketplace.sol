@@ -914,12 +914,10 @@ interface IMarketPlace {
 
 abstract contract MarketPlace is IMarketPlace, ERC721, Ownable {
     // list of all sale items by tokenId
-    uint256[] private saleItems;
+    Listing[] private saleItems;
 
     // mappings are tied to tokenId
-    mapping(uint256 => uint256) private tokenPrice;
     mapping(uint256 => bool) private isForSale;
-    mapping(uint256 => address) private privateRecipient;
 
     // listing index location of each listed token
     mapping(uint256 => uint256) private listId;
@@ -929,13 +927,22 @@ abstract contract MarketPlace is IMarketPlace, ERC721, Ownable {
 
     // INTERNAL
     function _listItem( uint256 tokenId, uint256 price ) internal {
+        
         if ( isForSale[ tokenId ] ) {
-            tokenPrice[ tokenId ] = price;
+            // update the existing tokenId with a new price
+            saleItems[ listId[tokenId] ].tokenprice = price;
         }
         else {
-            tokenPrice[ tokenId ] = price;
-            isForSale[ tokenId ] = true;
-            saleItems.push( tokenId );
+            //create a new item listing
+            Listing memory newItem;
+            
+            newItem.tokenid = tokenId;
+            newItem.tokenprice = price;
+
+            isForSale[ tokenId ] = true;                // isForSale is ineffiecent??
+            listId[ tokenId ] = itemsForSale;
+            
+            saleItems.push( newItem );
             unchecked {
                 ++itemsForSale;
             }
@@ -943,15 +950,15 @@ abstract contract MarketPlace is IMarketPlace, ERC721, Ownable {
     }
 
     function _delistItem(uint256 tokenId) internal {
-        delete tokenPrice[tokenId];
+        // may need to modify this for a more efficient check
         delete isForSale[tokenId];
-        delete privateRecipient[tokenId];
+
         unchecked {
             --itemsForSale;
         }
 
         //update token list
-        uint256 tempTokenId = saleItems[itemsForSale];
+        uint256 tempTokenId = saleItems[itemsForSale].tokenid;
         if (tempTokenId == tokenId){
             saleItems.pop();
         }
@@ -959,8 +966,8 @@ abstract contract MarketPlace is IMarketPlace, ERC721, Ownable {
             //record the listId of the token we want to get rid of
             uint256 tempListId = listId[tokenId];
 
-            //store the last tokenId from the array into the newly vacant slot
-            saleItems[tempListId] = tempTokenId;
+            //store the last token from the array into the newly vacant slot
+            saleItems[tempListId] = saleItems[itemsForSale];
 
             //record the new index of said token
             listId[tempTokenId] = tempListId;
@@ -997,7 +1004,7 @@ abstract contract MarketPlace is IMarketPlace, ERC721, Ownable {
         address tokenOwner = ownerOf( tokenId );
         require( _msgSender() == tokenOwner, "Invalid Lister" );
         _listItem( tokenId, price );
-        privateRecipient[ tokenId ] = recipient;
+        saleItems[ listId[tokenId] ].to = recipient;
         emit Listed( tokenId, tokenOwner, recipient, price );
     }
 
@@ -1009,13 +1016,13 @@ abstract contract MarketPlace is IMarketPlace, ERC721, Ownable {
 
     function buyItem(uint256 tokenId) external payable {
         require(isForSale[tokenId], "Item not for Sale");
-        uint256 totalPrice = tokenPrice[tokenId];
+        uint256 totalPrice = saleItems[ listId[tokenId] ].tokenprice;
         uint256 royaltyPrice = (totalPrice * royalty)/100000;
         require(msg.value == totalPrice, "Incorrect price");
 
         address buyer = _msgSender();
-        if (privateRecipient[tokenId] != address(0)){
-            require( buyer == privateRecipient[tokenId], "invalid sale address");
+        if (saleItems[ listId[tokenId] ].to != address(0)){
+            require( buyer == saleItems[ listId[tokenId] ].to, "invalid sale address");
         }
 
         address tokenOwner = ownerOf( tokenId );
@@ -1044,37 +1051,12 @@ abstract contract MarketPlace is IMarketPlace, ERC721, Ownable {
 
     // VIEW
     function getAllListings() external view returns (Listing[] memory){
-        uint256 arraylen = saleItems.length;
-
-        Listing[] memory activeSales = new Listing[](arraylen);
-
-        for(uint256 i=0; i<arraylen; i++){
-            uint256 tokenId = saleItems[i];
-            activeSales[i].tokenid = tokenId;
-            activeSales[i].tokenprice = tokenPrice[tokenId];
-            activeSales[i].to = privateRecipient[tokenId];
-        }
-
-        return activeSales;
+        return saleItems;
     }
 
     function getListing( uint256 tokenId ) external view returns ( Listing memory ) {
-        Listing memory listing = Listing(
-            tokenId,
-            tokenPrice[ tokenId ],
-            privateRecipient[ tokenId ]
-        );
-        return listing;
+        return saleItems[ listId[tokenId] ];
     }
-}
-
-abstract contract ApprovalBlacklist is Ownable {
-    //REQUIRES ADDITION OF wlOnly TO ALL APPROVAL FUNCTIONS
-
-}
-
-abstract contract ApprovalWhitelist is Ownable {
-
 }
 
 
