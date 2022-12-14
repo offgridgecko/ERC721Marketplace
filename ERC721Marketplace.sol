@@ -922,7 +922,6 @@ abstract contract MarketPlace is IMarketPlace, ERC721, Ownable {
     // listing index location of each listed token
     mapping(uint256 => uint256) private listId;
 
-    uint256 private itemsForSale;
     uint256 private royalty;
 
     // INTERNAL
@@ -939,13 +938,10 @@ abstract contract MarketPlace is IMarketPlace, ERC721, Ownable {
             newItem.tokenid = tokenId;
             newItem.tokenprice = price;
 
-            isForSale[ tokenId ] = true;                // isForSale is ineffiecent??
-            listId[ tokenId ] = itemsForSale;
+            isForSale[ tokenId ] = true;
+            listId[ tokenId ] = saleItems.length;
             
             saleItems.push( newItem );
-            unchecked {
-                ++itemsForSale;
-            }
         }
     }
 
@@ -953,12 +949,8 @@ abstract contract MarketPlace is IMarketPlace, ERC721, Ownable {
         // may need to modify this for a more efficient check
         delete isForSale[tokenId];
 
-        unchecked {
-            --itemsForSale;
-        }
-
         //update token list
-        uint256 tempTokenId = saleItems[itemsForSale].tokenid;
+        uint256 tempTokenId = saleItems[saleItems.length].tokenid;
         if (tempTokenId == tokenId){
             saleItems.pop();
         }
@@ -967,7 +959,7 @@ abstract contract MarketPlace is IMarketPlace, ERC721, Ownable {
             uint256 tempListId = listId[tokenId];
 
             //store the last token from the array into the newly vacant slot
-            saleItems[tempListId] = saleItems[itemsForSale];
+            saleItems[tempListId] = saleItems[saleItems.length];
 
             //record the new index of said token
             listId[tempTokenId] = tempListId;
@@ -1060,7 +1052,7 @@ abstract contract MarketPlace is IMarketPlace, ERC721, Ownable {
 }
 
 
-contract project is MarketPlace, ApprovalBlacklist {
+contract project is MarketPlace {
 
     uint256 maxSupply = 1000;
     uint256 totalSupply = 0;
